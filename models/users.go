@@ -8,5 +8,6 @@ type User struct {
 	Email     string             `bson:"email" json:"email"`
 	Username  string             `bson:"username" json:"username"`
 	Password  string             `bson:"hashed_password" json:"-"`
+	Role      string             `bson:"role" json:"role"`
 	CreatedAt primitive.DateTime `bson:"created_at" json:"created_at"`
 }

@@ -30,6 +30,7 @@ func CreateAdmin() {
 		Email:     cfg.AdminEmail,
 		Username:  "admin",
 		Password:  hashed,
+		Role:      "admin",
 		CreatedAt: primitive.NewDateTimeFromTime(time.Now()),
 	}
 

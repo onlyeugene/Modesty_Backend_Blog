@@ -110,7 +110,9 @@ func UpdatePost(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
 		return
 	}
-	if post.AuthorID != uid {
+	// If not the author, check if user is an admin
+	userRole, _ := c.Get("userRole")
+	if post.AuthorID != uid && userRole != "admin" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not authorized"})
 		return
 	}
@@ -157,7 +159,10 @@ func DeletePost(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
-	if post.AuthorID != uid {
+
+	// If not the author, check if user is an admin
+	userRole, _ := c.Get("userRole")
+	if post.AuthorID != uid && userRole != "admin" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not authorized"})
 		return
 	}
