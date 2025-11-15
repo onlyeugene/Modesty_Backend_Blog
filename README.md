@@ -33,11 +33,7 @@ This is a simple blog API built with Go using the Gin web framework and MongoDB 
     Create a `.env` file in the root directory and add the following:
 
     ```env
-    MONGODB_URL="your_mongodb_connection_string"
-    CLOUDINARY_URL="your_cloudinary_url" # Optional
-    SECRET_KEY="a_very_secret_key"
-    ADMIN_EMAIL="admin@example.com"
-    ADMIN_PASSWORD="admin_password"
+
     ```
 
 3.  **Run the application**:
