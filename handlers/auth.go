@@ -46,15 +46,16 @@ func Register(c *gin.Context) {
 		Email:     req.Email,
 		Username:  req.Username,
 		Password:  hashed,
+		Role:      "admin", // Default role for new users
 		CreatedAt: primitive.NewDateTimeFromTime(time.Now()),
 	}
 
 	res, _ := coll.InsertOne(ctx, user)
 	user.ID = res.InsertedID.(primitive.ObjectID)
 
-	token, _ := utils.GenerateToken(user.ID.Hex())
+	token, _ := utils.GenerateToken(user.ID.Hex(), user.Role)
 	c.JSON(http.StatusOK, gin.H{"token": token, "user": gin.H{
-		"id": user.ID.Hex(), "email": user.Email, "username": user.Username,
+		"id": user.ID.Hex(), "email": user.Email, "username": user.Username, "role": user.Role,
 	}})
 }
 
@@ -75,6 +76,6 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	token, _ := utils.GenerateToken(user.ID.Hex())
+	token, _ := utils.GenerateToken(user.ID.Hex(), user.Role)
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
