@@ -42,6 +42,7 @@ func main() {
 
 	// PUBLIC: Anyone can read posts
 	r.GET("/posts", handlers.GetPosts)
+	r.GET("/posts/:id", handlers.GetPostByID)
 
 	// PROTECTED: Only logged-in users can create
 	auth := r.Group("/")

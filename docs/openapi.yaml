@@ -2,12 +2,12 @@ openapi: 3.1.0
 info:
   title: Blog API
   description: |
-   
+
     A fast, secure blog backend built in Go.  
     - JWT authentication  
     - Image upload via Cloudinary  
     - Full CRUD (only author can edit/delete)  
-    - Admin auto-created: `admin@zamrull.ng` / `admin123`  
+    - Admin auto-created: `admin@zamrull.ng` / `admin123`
   version: 1.0.0
   contact:
     name: Eugene Okogun
@@ -33,15 +33,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: "#/components/schemas/RegisterRequest"
       responses:
-        '200':
+        "200":
           description: User created + JWT
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
           description: Email already exists
 
   /login:
@@ -53,15 +53,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: JWT token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenResponse'
-        '401':
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
           description: Invalid credentials
 
   /posts:
@@ -69,14 +69,14 @@ paths:
       tags: [Posts]
       summary: List all posts (public)
       responses:
-        '200':
+        "200":
           description: Array of posts
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Post'
+                  $ref: "#/components/schemas/Post"
 
     post:
       tags: [Posts]
@@ -101,16 +101,35 @@ paths:
                   format: binary
                   description: Optional image (JPG/PNG)
       responses:
-        '200':
+        "200":
           description: Post created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Post'
-        '401':
+                $ref: "#/components/schemas/Post"
+        "401":
           description: Not authenticated
 
   /posts/{id}:
+    get:
+      tags: [Posts]
+      summary: Get a post by ID (public)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID
+      responses:
+        "200":
+          description: Single post object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "404":
+          description: Post not found
     put:
       tags: [Posts]
       summary: Update a post (author only)
@@ -138,15 +157,15 @@ paths:
                   type: string
                   format: binary
       responses:
-        '200':
+        "200":
           description: Post updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Post'
-        '403':
+                $ref: "#/components/schemas/Post"
+        "403":
           description: Not authorized (not author)
-        '404':
+        "404":
           description: Post not found
 
     delete:
@@ -162,7 +181,7 @@ paths:
             type: string
           description: Post ID
       responses:
-        '200':
+        "200":
           description: Post deleted
           content:
             application/json:
@@ -172,9 +191,9 @@ paths:
                   message:
                     type: string
                     example: "deleted"
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Post not found
 
 components:

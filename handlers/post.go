@@ -72,76 +72,96 @@ func GetPosts(c *gin.Context) {
 	c.JSON(http.StatusOK, posts)
 }
 
-// handlers/post.go (add these functions)
+func GetPostByID(c *gin.Context) {
+	postID := c.Param("id")
+	pid, err := primitive.ObjectIDFromHex(postID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid post ID"})
+		return
+	}
+
+	coll := database.DB.Collection("posts")
+	var post models.Post
+	if err := coll.FindOne(c.Request.Context(), bson.M{"_id": pid}).Decode(&post); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+		return
+	}
+
+	var u models.User
+	database.DB.Collection("users").FindOne(c.Request.Context(), bson.M{"_id": post.AuthorID}).Decode(&u)
+	post.Author = u.Username
+
+	c.JSON(http.StatusOK, post)
+}
 
 func UpdatePost(c *gin.Context) {
-    userID, _ := c.Get("userID")
-    uid, _ := primitive.ObjectIDFromHex(userID.(string))
-    postID := c.Param("id")
-    pid, err := primitive.ObjectIDFromHex(postID)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid post ID"})
-        return
-    }
+	userID, _ := c.Get("userID")
+	uid, _ := primitive.ObjectIDFromHex(userID.(string))
+	postID := c.Param("id")
+	pid, err := primitive.ObjectIDFromHex(postID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid post ID"})
+		return
+	}
 
-    coll := database.DB.Collection("posts")
-    var post models.Post
-    if err := coll.FindOne(c.Request.Context(), bson.M{"_id": pid}).Decode(&post); err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
-        return
-    }
-    if post.AuthorID != uid {
-        c.JSON(http.StatusForbidden, gin.H{"error": "not authorized"})
-        return
-    }
+	coll := database.DB.Collection("posts")
+	var post models.Post
+	if err := coll.FindOne(c.Request.Context(), bson.M{"_id": pid}).Decode(&post); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+		return
+	}
+	if post.AuthorID != uid {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not authorized"})
+		return
+	}
 
-    var req models.CreatePostRequest
-    if err := c.ShouldBind(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
+	var req models.CreatePostRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-    update := bson.M{
-        "title":       req.Title,
-        "content":     req.Content,
-        "updated_at":  primitive.NewDateTimeFromTime(time.Now()),
-    }
+	update := bson.M{
+		"title":      req.Title,
+		"content":    req.Content,
+		"updated_at": primitive.NewDateTimeFromTime(time.Now()),
+	}
 
-    if file, err := c.FormFile("image"); err == nil {
-        f, _ := file.Open()
-        defer f.Close()
-        cld, _ := cloudinary.NewFromURL(config.Load().CloudinaryURL)
-        resp, _ := cld.Upload.Upload(context.Background(), f, uploader.UploadParams{Folder: "blog_posts"})
-        update["image_url"] = resp.SecureURL
-    }
+	if file, err := c.FormFile("image"); err == nil {
+		f, _ := file.Open()
+		defer f.Close()
+		cld, _ := cloudinary.NewFromURL(config.Load().CloudinaryURL)
+		resp, _ := cld.Upload.Upload(context.Background(), f, uploader.UploadParams{Folder: "blog_posts"})
+		update["image_url"] = resp.SecureURL
+	}
 
-    coll.UpdateOne(c.Request.Context(), bson.M{"_id": pid}, bson.M{"$set": update})
-    coll.FindOne(c.Request.Context(), bson.M{"_id": pid}).Decode(&post)
-    post.Author = "You" // or fetch username
-    c.JSON(http.StatusOK, post)
+	coll.UpdateOne(c.Request.Context(), bson.M{"_id": pid}, bson.M{"$set": update})
+	coll.FindOne(c.Request.Context(), bson.M{"_id": pid}).Decode(&post)
+	post.Author = "You" // or fetch username
+	c.JSON(http.StatusOK, post)
 }
 
 func DeletePost(c *gin.Context) {
-    userID, _ := c.Get("userID")
-    uid, _ := primitive.ObjectIDFromHex(userID.(string))
-    postID := c.Param("id")
-    pid, err := primitive.ObjectIDFromHex(postID)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
-        return
-    }
+	userID, _ := c.Get("userID")
+	uid, _ := primitive.ObjectIDFromHex(userID.(string))
+	postID := c.Param("id")
+	pid, err := primitive.ObjectIDFromHex(postID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
+		return
+	}
 
-    coll := database.DB.Collection("posts")
-    var post models.Post
-    if err := coll.FindOne(c.Request.Context(), bson.M{"_id": pid}).Decode(&post); err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-        return
-    }
-    if post.AuthorID != uid {
-        c.JSON(http.StatusForbidden, gin.H{"error": "not authorized"})
-        return
-    }
+	coll := database.DB.Collection("posts")
+	var post models.Post
+	if err := coll.FindOne(c.Request.Context(), bson.M{"_id": pid}).Decode(&post); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if post.AuthorID != uid {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not authorized"})
+		return
+	}
 
-    coll.DeleteOne(c.Request.Context(), bson.M{"_id": pid})
-    c.JSON(http.StatusOK, gin.H{"message": "deleted"})
+	coll.DeleteOne(c.Request.Context(), bson.M{"_id": pid})
+	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
