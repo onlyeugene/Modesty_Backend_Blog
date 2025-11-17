@@ -64,6 +64,11 @@ func GetPosts(c *gin.Context) {
 	var posts []models.Post
 	cur.All(c.Request.Context(), &posts)
 
+	if len(posts) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No posts found"})
+		return
+	}
+
 	for i := range posts {
 		var u models.User
 		database.DB.Collection("users").FindOne(c.Request.Context(), bson.M{"_id": posts[i].AuthorID}).Decode(&u)
