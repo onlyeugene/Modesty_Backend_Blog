@@ -21,28 +21,53 @@ func CreatePost(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	uid, _ := primitive.ObjectIDFromHex(userID.(string))
 
-	var req models.CreatePostRequest
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// Parse the multipart form manually to handle files and fields
+	if err := c.Request.ParseMultipartForm(512 << 20); err != nil { // 512 MB limit
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse multipart form: " + err.Error()})
 		return
 	}
 
+	var req models.CreatePostRequest
+	// Manually bind fields from the parsed form
+	req.Title = c.Request.MultipartForm.Value["title"][0]
+	req.Subheading = c.Request.MultipartForm.Value["subheading"][0]
+	req.Content = c.Request.MultipartForm.Value["content"][0]
+
+	// Handle image upload
 	var imageURL string
-	if file, err := c.FormFile("image"); err == nil {
-		f, _ := file.Open()
-		defer f.Close()
+	if file, handler, err := c.Request.FormFile("image"); err == nil {
+		defer file.Close()
 		cld, _ := cloudinary.NewFromURL(config.Load().CloudinaryURL)
-		resp, _ := cld.Upload.Upload(context.Background(), f, uploader.UploadParams{Folder: "blog_posts"})
+		resp, _ := cld.Upload.Upload(context.Background(), file, uploader.UploadParams{Folder: "blog_posts", PublicID: handler.Filename})
 		imageURL = resp.SecureURL
+	} else if err != http.ErrMissingFile {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image upload failed"})
+		return
+	}
+
+	// Handle video upload
+	var videoURL []string
+	if files, ok := c.Request.MultipartForm.File["video"]; ok {
+		cld, _ := cloudinary.NewFromURL(config.Load().CloudinaryURL)
+		for _, fileHeader := range files {
+			file, _ := fileHeader.Open()
+			defer file.Close()
+			resp, _ := cld.Upload.Upload(context.Background(), file, uploader.UploadParams{Folder: "blog_videos", ResourceType: "video", PublicID: fileHeader.Filename})
+			videoURL = append(videoURL, resp.SecureURL)
+		}
 	}
 
 	p := models.Post{
-		Title:     req.Title,
-		Content:   req.Content,
-		ImageURL:  imageURL,
-		AuthorID:  uid,
-		CreatedAt: primitive.NewDateTimeFromTime(time.Now()),
-		UpdatedAt: primitive.NewDateTimeFromTime(time.Now()),
+		Title:      req.Title,
+		Subheading: req.Subheading,
+		Content:    req.Content,
+		ImageURL:   imageURL,
+		VideoURL:   videoURL,
+		AuthorID:   uid,
+		Time:       primitive.NewDateTimeFromTime(time.Now()),
+		Date:       primitive.NewDateTimeFromTime(time.Now()),
+		CreatedAt:  primitive.NewDateTimeFromTime(time.Now()),
+		UpdatedAt:  primitive.NewDateTimeFromTime(time.Now()),
 	}
 	coll := database.DB.Collection("posts")
 	res, _ := coll.InsertOne(c.Request.Context(), p)
@@ -58,7 +83,7 @@ func CreatePost(c *gin.Context) {
 
 func GetPosts(c *gin.Context) {
 	coll := database.DB.Collection("posts")
-	opts := options.Find().SetSort(bson.D{{"created_at", -1}})
+	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}})
 	cur, _ := coll.Find(c.Request.Context(), bson.M{}, opts)
 
 	var posts []models.Post
@@ -122,24 +147,57 @@ func UpdatePost(c *gin.Context) {
 		return
 	}
 
-	var req models.CreatePostRequest
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// Parse the multipart form manually to handle files and fields
+	if err := c.Request.ParseMultipartForm(512 << 20); err != nil { // 512 MB limit
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse multipart form: " + err.Error()})
 		return
 	}
 
+	var req models.CreatePostRequest
+	// Manually bind fields from the parsed form
+	req.Title = c.Request.MultipartForm.Value["title"][0]
+	req.Subheading = c.Request.MultipartForm.Value["subheading"][0]
+	req.Content = c.Request.MultipartForm.Value["content"][0]
+
 	update := bson.M{
-		"title":      req.Title,
-		"content":    req.Content,
 		"updated_at": primitive.NewDateTimeFromTime(time.Now()),
+		"time":       primitive.NewDateTimeFromTime(time.Now()),
+		"date":       primitive.NewDateTimeFromTime(time.Now()),
 	}
 
-	if file, err := c.FormFile("image"); err == nil {
-		f, _ := file.Open()
-		defer f.Close()
+	if req.Title != "" {
+		update["title"] = req.Title
+	}
+	if req.Subheading != "" {
+		update["subheading"] = req.Subheading
+	}
+	if req.Content != "" {
+		update["content"] = req.Content
+	}
+	// No need for req.VideoURL check here, it's handled by file upload logic
+
+	// Handle image upload
+	if file, handler, err := c.Request.FormFile("image"); err == nil {
+		defer file.Close()
 		cld, _ := cloudinary.NewFromURL(config.Load().CloudinaryURL)
-		resp, _ := cld.Upload.Upload(context.Background(), f, uploader.UploadParams{Folder: "blog_posts"})
+		resp, _ := cld.Upload.Upload(context.Background(), file, uploader.UploadParams{Folder: "blog_posts", PublicID: handler.Filename})
 		update["image_url"] = resp.SecureURL
+	} else if err != http.ErrMissingFile {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image upload failed"})
+		return
+	}
+
+	// Handle video upload
+	if files, ok := c.Request.MultipartForm.File["video"]; ok {
+		cld, _ := cloudinary.NewFromURL(config.Load().CloudinaryURL)
+		var videoURLs []string
+		for _, fileHeader := range files {
+			file, _ := fileHeader.Open()
+			defer file.Close()
+			resp, _ := cld.Upload.Upload(context.Background(), file, uploader.UploadParams{Folder: "blog_videos", ResourceType: "video", PublicID: fileHeader.Filename})
+			videoURLs = append(videoURLs, resp.SecureURL)
+		}
+		update["video_url"] = videoURLs
 	}
 
 	coll.UpdateOne(c.Request.Context(), bson.M{"_id": pid}, bson.M{"$set": update})

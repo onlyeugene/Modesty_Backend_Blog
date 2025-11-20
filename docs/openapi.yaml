@@ -93,6 +93,9 @@ paths:
                 title:
                   type: string
                   example: "My Journey in Tech"
+                subheading:
+                  type: string
+                  example: "A deep dive into my career"
                 content:
                   type: string
                   example: "From Lagos to the world..."
@@ -100,6 +103,12 @@ paths:
                   type: string
                   format: binary
                   description: Optional image (JPG/PNG)
+                video:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Optional multiple video files (MP4/MOV)
       responses:
         "200":
           description: Post created
@@ -151,11 +160,18 @@ paths:
               properties:
                 title:
                   type: string
+                subheading:
+                  type: string
                 content:
                   type: string
                 image:
                   type: string
                   format: binary
+                video:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
       responses:
         "200":
           description: Post updated
@@ -258,15 +274,29 @@ components:
           type: string
         title:
           type: string
+        subheading:
+          type: string
+          nullable: true
         content:
           type: string
         image_url:
           type: string
           nullable: true
+        video_url:
+          type: array
+          items:
+            type: string
+          nullable: true
         author:
           type: string
         author_id:
           type: string
+        time:
+          type: string
+          format: date-time
+        date:
+          type: string
+          format: date-time
         created_at:
           type: string
           format: date-time
