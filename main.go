@@ -52,7 +52,6 @@ func main() {
 			auth.POST("/posts", handlers.CreatePost)
 			auth.PUT("/posts/:id", handlers.UpdatePost)
 			auth.DELETE("/posts/:id", handlers.DeletePost)
-			auth.POST("/posts/:id/image", handlers.UploadPostImage)
 			auth.POST("/posts/:id/video", handlers.UploadPostVideo)
 		}
 	}

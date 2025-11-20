@@ -80,15 +80,29 @@ paths:
 
     post:
       tags: [Posts]
-      summary: Create a new post (text content only)
+      summary: Create a new post
       security:
         - bearerAuth: []
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: "#/components/schemas/CreatePostRequest"
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: "My Journey in Tech"
+                subheading:
+                  type: string
+                  example: "A deep dive into my career"
+                content:
+                  type: string
+                  example: "From Lagos to the world..."
+                image:
+                  type: string
+                  format: binary
+                  description: Optional image (JPG/PNG)
       responses:
         "200":
           description: Post created
@@ -121,7 +135,7 @@ paths:
           description: Post not found
     put:
       tags: [Posts]
-      summary: Update a post (author only, text content only)
+      summary: Update a post (author only)
       security:
         - bearerAuth: []
       parameters:
@@ -134,9 +148,19 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: "#/components/schemas/CreatePostRequest" # Reuse CreatePostRequest for updates
+              type: object
+              properties:
+                title:
+                  type: string
+                subheading:
+                  type: string
+                content:
+                  type: string
+                image:
+                  type: string
+                  format: binary
       responses:
         "200":
           description: Post updated
@@ -176,48 +200,6 @@ paths:
           description: Not authorized
         "404":
           description: Post not found
-
-  /posts/{id}/image:
-    post:
-      tags: [Posts]
-      summary: Upload an image for a post
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Post ID
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                image:
-                  type: string
-                  format: binary
-                  description: Image file (JPG/PNG)
-      responses:
-        "200":
-          description: Image uploaded successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ImageUploadResponse"
-        "400":
-          description: Invalid post ID or no image file
-        "401":
-          description: Not authenticated
-        "403":
-          description: Not authorized
-        "404":
-          description: Post not found
-        "500":
-          description: Internal server error (e.g., Cloudinary upload failure)
 
   /posts/{id}/video:
     post:
@@ -368,16 +350,6 @@ components:
         content:
           type: string
           example: "From Lagos to the world..."
-
-    ImageUploadResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          example: "image uploaded successfully"
-        image_url:
-          type: string
-          example: "https://res.cloudinary.com/yourcloud/image.jpg"
 
     VideoUploadResponse:
       type: object

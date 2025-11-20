@@ -22,18 +22,27 @@ func CreatePost(c *gin.Context) {
 	uid, _ := primitive.ObjectIDFromHex(userID.(string))
 
 	var req models.CreatePostRequest
-	if err := c.ShouldBindJSON(&req); err != nil { // Expecting JSON body for text fields
+	if err := c.ShouldBind(&req); err != nil { // Expecting multipart/form-data for text fields and image
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	var imageURL string
+	if file, err := c.FormFile("image"); err == nil {
+		f, _ := file.Open()
+		defer f.Close()
+		cld, _ := cloudinary.NewFromURL(config.Load().CloudinaryURL)
+		resp, _ := cld.Upload.Upload(context.Background(), f, uploader.UploadParams{Folder: "blog_posts"})
+		imageURL = resp.SecureURL
 	}
 
 	p := models.Post{
 		Title:      req.Title,
 		Subheading: req.Subheading,
 		Content:    req.Content,
+		ImageURL:   imageURL,
+		VideoURL:   []string{}, // Handled by separate endpoint
 		AuthorID:   uid,
-		ImageURL:   "",         // Will be updated by separate endpoint
-		VideoURL:   []string{}, // Will be updated by separate endpoint
 		Time:       primitive.NewDateTimeFromTime(time.Now()),
 		Date:       primitive.NewDateTimeFromTime(time.Now()),
 		CreatedAt:  primitive.NewDateTimeFromTime(time.Now()),
@@ -117,8 +126,8 @@ func UpdatePost(c *gin.Context) {
 		return
 	}
 
-	var req models.CreatePostRequest
-	if err := c.ShouldBindJSON(&req); err != nil { // Expecting JSON body for text fields
+	var req models.CreatePostRequest           // Reuse CreatePostRequest for form fields
+	if err := c.ShouldBind(&req); err != nil { // Expecting multipart/form-data for text fields and image
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -137,6 +146,14 @@ func UpdatePost(c *gin.Context) {
 	}
 	if req.Content != "" {
 		update["content"] = req.Content
+	}
+
+	if file, err := c.FormFile("image"); err == nil {
+		f, _ := file.Open()
+		defer f.Close()
+		cld, _ := cloudinary.NewFromURL(config.Load().CloudinaryURL)
+		resp, _ := cld.Upload.Upload(context.Background(), f, uploader.UploadParams{Folder: "blog_posts"})
+		update["image_url"] = resp.SecureURL
 	}
 
 	coll.UpdateOne(c.Request.Context(), bson.M{"_id": pid}, bson.M{"$set": update})
@@ -171,51 +188,6 @@ func DeletePost(c *gin.Context) {
 
 	coll.DeleteOne(c.Request.Context(), bson.M{"_id": pid})
 	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
-}
-
-// UploadPostImage handles image uploads for a specific post
-func UploadPostImage(c *gin.Context) {
-	postID := c.Param("id")
-	pid, err := primitive.ObjectIDFromHex(postID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid post ID"})
-		return
-	}
-
-	// Verify user authorization (author or admin)
-	userID, _ := c.Get("userID")
-	uid, _ := primitive.ObjectIDFromHex(userID.(string))
-	userRole, _ := c.Get("userRole")
-
-	coll := database.DB.Collection("posts")
-	var post models.Post
-	if err := coll.FindOne(c.Request.Context(), bson.M{"_id": pid}).Decode(&post); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
-		return
-	}
-	if post.AuthorID != uid && userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "not authorized to upload image for this post"})
-		return
-	}
-
-	file, handler, err := c.Request.FormFile("image")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no image file provided or upload failed: " + err.Error()})
-		return
-	}
-	defer file.Close()
-
-	cld, _ := cloudinary.NewFromURL(config.Load().CloudinaryURL)
-	resp, err := cld.Upload.Upload(context.Background(), file, uploader.UploadParams{Folder: "blog_posts", PublicID: handler.Filename})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upload image to cloudinary: " + err.Error()})
-		return
-	}
-
-	update := bson.M{"image_url": resp.SecureURL, "updated_at": primitive.NewDateTimeFromTime(time.Now())}
-	coll.UpdateOne(c.Request.Context(), bson.M{"_id": pid}, bson.M{"$set": update})
-
-	c.JSON(http.StatusOK, gin.H{"message": "image uploaded successfully", "image_url": resp.SecureURL})
 }
 
 // UploadPostVideo handles video uploads for a specific post
