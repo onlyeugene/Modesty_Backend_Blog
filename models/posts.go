@@ -19,8 +19,8 @@ type Post struct {
 
 // Used for multipart binding
 type CreatePostRequest struct {
-	Title      string   `form:"title" binding:"required"`
-	Subheading string   `form:"subheading,omitempty"`
-	Content    string   `form:"content" binding:"required"`
-	VideoURL   []string `form:"video_url,omitempty"`
+	Title      string `json:"title" binding:"required"`
+	Subheading string `json:"subheading,omitempty"`
+	Content    string `json:"content" binding:"required"`
+	// VideoURL and ImageURL are handled by separate upload endpoints
 }

@@ -80,35 +80,15 @@ paths:
 
     post:
       tags: [Posts]
-      summary: Create a new post
+      summary: Create a new post (text content only)
       security:
         - bearerAuth: []
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                  example: "My Journey in Tech"
-                subheading:
-                  type: string
-                  example: "A deep dive into my career"
-                content:
-                  type: string
-                  example: "From Lagos to the world..."
-                image:
-                  type: string
-                  format: binary
-                  description: Optional image (JPG/PNG)
-                video:
-                  type: array
-                  items:
-                    type: string
-                    format: binary
-                  description: Optional multiple video files (MP4/MOV)
+              $ref: "#/components/schemas/CreatePostRequest"
       responses:
         "200":
           description: Post created
@@ -141,7 +121,7 @@ paths:
           description: Post not found
     put:
       tags: [Posts]
-      summary: Update a post (author only)
+      summary: Update a post (author only, text content only)
       security:
         - bearerAuth: []
       parameters:
@@ -154,24 +134,9 @@ paths:
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                subheading:
-                  type: string
-                content:
-                  type: string
-                image:
-                  type: string
-                  format: binary
-                video:
-                  type: array
-                  items:
-                    type: string
-                    format: binary
+              $ref: "#/components/schemas/CreatePostRequest" # Reuse CreatePostRequest for updates
       responses:
         "200":
           description: Post updated
@@ -211,6 +176,92 @@ paths:
           description: Not authorized
         "404":
           description: Post not found
+
+  /posts/{id}/image:
+    post:
+      tags: [Posts]
+      summary: Upload an image for a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Image file (JPG/PNG)
+      responses:
+        "200":
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUploadResponse"
+        "400":
+          description: Invalid post ID or no image file
+        "401":
+          description: Not authenticated
+        "403":
+          description: Not authorized
+        "404":
+          description: Post not found
+        "500":
+          description: Internal server error (e.g., Cloudinary upload failure)
+
+  /posts/{id}/video:
+    post:
+      tags: [Posts]
+      summary: Upload one or more videos for a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                video:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Video files (MP4/MOV)
+      responses:
+        "200":
+          description: Videos uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoUploadResponse"
+        "400":
+          description: Invalid post ID or no video files
+        "401":
+          description: Not authenticated
+        "403":
+          description: Not authorized
+        "404":
+          description: Post not found
+        "500":
+          description: Internal server error (e.g., Cloudinary upload failure)
 
 components:
   securitySchemes:
@@ -303,3 +354,39 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    CreatePostRequest:
+      type: object
+      required: [title, content]
+      properties:
+        title:
+          type: string
+          example: "My Journey in Tech"
+        subheading:
+          type: string
+          example: "A deep dive into my career"
+        content:
+          type: string
+          example: "From Lagos to the world..."
+
+    ImageUploadResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "image uploaded successfully"
+        image_url:
+          type: string
+          example: "https://res.cloudinary.com/yourcloud/image.jpg"
+
+    VideoUploadResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "videos uploaded successfully"
+        video_urls:
+          type: array
+          items:
+            type: string
+            example: "https://res.cloudinary.com/yourcloud/video1.mp4"
